@@ -2,10 +2,11 @@
 #define HTEST_HPP_
 
 #include <ios>
-#include <iostream>
 #include <mutex>
 #include <string>
 #include <vector>
+#include <iostream>
+
 
 #define HTEST_REPORT_LINE_LEN 48
 #define HTEST_TERM_COLOR_B_RED_S    "\033[91m"
@@ -54,9 +55,10 @@ private:                                                                        
     }
 
 #ifndef HTEST_NO_SHORTCUT
-#   define HT_CASE HTEST_CASE
-#   define HT_ASSERT_TRUE HTEST_ASSERT_TRUE
+#   define HT_CASE          HTEST_CASE
+#   define HT_ASSERT_TRUE   HTEST_ASSERT_TRUE
 #endif // HTEST_NO_SHORTCUT
+
 
 namespace htest
 {
@@ -108,7 +110,13 @@ void BaseCase::report_fail(int line, T test_val, T expect_val)
 
 #endif // HTEST_HPP_
 
-#define HTEST_IMPLEMENTATION
+#define HTEST_IMPLEMENTATION    // delete me
+
+#ifdef HTEST_DEFINE_MAIN
+#   ifndef HTEST_IMPLEMENTATION
+#       define HTEST_IMPLEMENTATION
+#   endif // HTEST_IMPLEMENTATION
+#endif // HTEST_DEFINE_MAIN
 
 #ifdef HTEST_IMPLEMENTATION
 #ifndef HTEST_CPP_
