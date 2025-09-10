@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
-#include <iostream>
 #include <vector>
 #include <iomanip>
 #include <ostream>
@@ -55,6 +54,7 @@ public:
     void fill_0_();
     void fill_1_();
     void resize_(int r, int c);
+    bool is_sym() const;
 
     MatrixInitalizer operator<<(T v);
     MatrixX& operator=(const MatrixX& m);
@@ -436,6 +436,20 @@ bool MatrixX<T>::is_pd_psd(bool psd) const
         T d{sub(i, i, row_ - i, col_ - i).det()};
         if (d < 0 || (!psd && d == 0)) {
             return false;
+        }
+    }
+    return true;
+}
+
+template<typename T>
+bool MatrixX<T>::is_sym() const
+{
+    if (row_ != col_) return false;
+    if (row_ == 1) return true;
+
+    for (int r = 0; r < row_; ++r) {
+        for (int c = r + 1; c < col_; ++c) {
+            if (at(r, c) != at(c, r)) return false;
         }
     }
     return true;

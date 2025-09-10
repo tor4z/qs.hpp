@@ -5,3 +5,4 @@ project(qs.hpp)
 include_directories(${CMAKE_CURRENT_LIST_DIR})
 
 add_subdirectory(examples)
+add_subdirectory(tests)
