@@ -11,5 +11,12 @@ HT_CASE(Matrix, is_sym)
          3, 5, 6;
 
     HT_ASSERT_TRUE(m.is_sym());
-    HT_ASSERT_TRUE(false);
+}
+
+
+HT_CASE(Matrix, to_failed)
+{
+    HT_ASSERT_TRUE(1 == 2);
+    HT_ASSERT_NE(1, 1);
+    HT_ASSERT_NEAR(2.0, 1.0, 0.002);
 }

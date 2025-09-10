@@ -3,17 +3,19 @@
 
 #include <ios>
 #include <mutex>
+#include <ostream>
 #include <string>
 #include <vector>
 #include <iostream>
 
 
-#define HTEST_REPORT_LINE_LEN 48
+#define HTEST_REPORT_LINE_LEN       48
 #define HTEST_TERM_COLOR_B_RED_S    "\033[91m"
 #define HTEST_TERM_COLOR_B_GREEN_S  "\033[32m"
 #define HTEST_TERM_COLOR_E          "\033[0m"
-#define HTEST_TERM_COLOR_SUCC_S HTEST_TERM_COLOR_B_GREEN_S
-#define HTEST_TERM_COLOR_FAIL_S HTEST_TERM_COLOR_B_RED_S
+#define HTEST_TERM_COLOR_SUCC_S     HTEST_TERM_COLOR_B_GREEN_S
+#define HTEST_TERM_COLOR_FAIL_S     HTEST_TERM_COLOR_B_RED_S
+#define HTEST_ASSERT_EXPECT_STR     "\n     expect "
 
 #define HTEST_DEF_SINGLETON(classname)                                          \
 public:                                                                         \
@@ -51,12 +53,44 @@ private:                                                                        
     if ((v)) {                                                                  \
         report_success();                                                       \
     } else {                                                                    \
-        report_fail(__LINE__, static_cast<bool>(v), true);                      \
+        report_fail_assert_bool(__LINE__, #v, static_cast<bool>(v), true);      \
+    }
+
+#define HTEST_ASSERT_FALSE(v)                                                   \
+    if (!(v)) {                                                                 \
+        report_success();                                                       \
+    } else {                                                                    \
+        report_fail_assert_bool(__LINE__, #v, static_cast<bool>(v), false);     \
+    }
+
+#define HTEST_ASSERT_EQ(v1, v2)                                                 \
+    if ((v1) == (v2)) {                                                         \
+        report_success();                                                       \
+    } else {                                                                    \
+        report_fail_assert_eq(__LINE__, #v1, v1, #v2, v2);                      \
+    }
+
+#define HTEST_ASSERT_NE(v1, v2)                                                 \
+    if ((v1) != (v2)) {                                                         \
+        report_success();                                                       \
+    } else {                                                                    \
+        report_fail_assert_ne(__LINE__, #v1, v1, #v2, v1);                      \
+    }
+
+#define HTEST_ASSERT_NEAR(v1, v2, eps)                                          \
+    if (std::abs((v1) - (v2)) < std::abs(eps)) {                                \
+        report_success();                                                       \
+    } else {                                                                    \
+        report_fail_assert_near(__LINE__, #v1, v1, #v2, v1, eps);               \
     }
 
 #ifndef HTEST_NO_SHORTCUT
 #   define HT_CASE          HTEST_CASE
 #   define HT_ASSERT_TRUE   HTEST_ASSERT_TRUE
+#   define HT_ASSERT_FALSE   HTEST_ASSERT_FALSE
+#   define HT_ASSERT_EQ     HTEST_ASSERT_EQ
+#   define HT_ASSERT_NE     HTEST_ASSERT_NE
+#   define HT_ASSERT_NEAR     HTEST_ASSERT_NEAR
 #endif // HTEST_NO_SHORTCUT
 
 
@@ -72,8 +106,15 @@ struct BaseCase
     virtual void test_body() = 0;
 protected:
     void report_success();
+    std::ostream& report_fail(std::ostream& os, int line);
     template<typename T>
-    void report_fail(int line, T test_val, T expect_val);
+    void report_fail_assert_bool(int line, const char* expr, T test_val, bool expect_val);
+    template<typename T>
+    void report_fail_assert_eq(int line, const char* expr1, T val1, const char* expr2, T val2);
+    template<typename T>
+    void report_fail_assert_ne(int line, const char* expr1, T val1, const char* expr2, T val2);
+    template<typename T>
+    void report_fail_assert_near(int line, const char* expr1, T val1, const char* expr2, T val2, T eps);
 private:
     friend class TestCases;
 
@@ -96,14 +137,38 @@ private:
 }; // class TestCases
 
 template<typename T>
-void BaseCase::report_fail(int line, T test_val, T expect_val)
+void BaseCase::report_fail_assert_bool(int line, const char* expr, T test_val, bool expect_val)
 {
-    ++num_tests_;
-    ++num_failed_;
-    std::cout << HTEST_TERM_COLOR_FAIL_S << suit_name_ << "." << case_name_
-        << " failed" HTEST_TERM_COLOR_E
-        << ": Line " << line << ", expect `"
-        << std::boolalpha << expect_val << "` got `" << test_val << "`\n";
+    report_fail(std::cout, line)
+        << "`" << expr << "` = " << test_val
+        << HTEST_ASSERT_EXPECT_STR "`" << expect_val << "`\n";
+}
+
+template<typename T>
+void BaseCase::report_fail_assert_eq(int line, const char* expr1, T val1, const char* expr2, T val2)
+{
+    report_fail(std::cout, line)
+        << "(`" << expr1 << "` = " << val1
+        << ") != (`" << expr2 << "` = " << val2 << ")"
+        << HTEST_ASSERT_EXPECT_STR "`==`\n";
+}
+
+template<typename T>
+void BaseCase::report_fail_assert_ne(int line, const char* expr1, T val1, const char* expr2, T val2)
+{
+    report_fail(std::cout, line)
+        << "(`" << expr1 << "` = " << val1
+        << ") == (`" << expr2 << "` = " << val2 << ")"
+        << HTEST_ASSERT_EXPECT_STR "`!=`\n";
+}
+
+template<typename T>
+void BaseCase::report_fail_assert_near(int line, const char* expr1, T val1, const char* expr2, T val2, T eps)
+{
+    report_fail(std::cout, line)
+        << "(`" << expr1 << "` = " << val1
+        << ") not near to (`" << expr2 << "` = " << val2 << ")"
+        << HTEST_ASSERT_EXPECT_STR "near with eps = " << eps << "\n";
 }
 
 } // namespace htest
@@ -130,6 +195,16 @@ BaseCase::BaseCase(const std::string& suit_name, const std::string& case_name)
     , num_tests_(0)
     , num_failed_(0)
 {}
+
+std::ostream& BaseCase::report_fail(std::ostream& os, int line)
+{
+    ++num_tests_;
+    ++num_failed_;
+    os << "> " << HTEST_TERM_COLOR_FAIL_S << suit_name_ << "." << case_name_
+        << " failed" HTEST_TERM_COLOR_E
+        << ": Line " << line << "\n    " << std::boolalpha;
+    return os;
+}
 
 void BaseCase::report_success()
 {
