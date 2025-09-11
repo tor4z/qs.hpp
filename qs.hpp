@@ -38,9 +38,9 @@ struct Array
     inline T& at(int i) { return data_.at(i); };
     inline int size() const { return data_.size(); };
 
-    Array& max(T v) const;
-    Array& abs() const;
-    Array& sign();
+    Array max(T v) const;
+    Array abs() const;
+    Array sign();
     void max_(T v);
     void abs_();
 private:
@@ -336,7 +336,7 @@ Array<T> Array<T>::operator-(const Array<T>& other) const
 }
 
 template<typename T>
-Array<T>& Array<T>::sign()
+Array<T> Array<T>::sign()
 {
     Array<T> out(size());
     const auto array_size{size()};
@@ -365,7 +365,7 @@ void Array<T>::abs_()
 }
 
 template<typename T>
-Array<T>& Array<T>::max(T v) const
+Array<T> Array<T>::max(T v) const
 {
     Array<T>out(*this);
     out.max_(v);
@@ -373,7 +373,7 @@ Array<T>& Array<T>::max(T v) const
 }
 
 template<typename T>
-Array<T>& Array<T>::abs() const
+Array<T> Array<T>::abs() const
 {
     Array<T>out(*this);
     out.abs_();
