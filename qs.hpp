@@ -1,10 +1,10 @@
 #ifndef QS_HPP_
 #define QS_HPP_
 
-#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <iostream>
 #include <vector>
 #include <iomanip>
 #include <ostream>
@@ -22,24 +22,31 @@ struct MatrixX;
 template<typename T>
 struct Array
 {
-    Array(int row, int col);
+    Array(int size);
     Array(const Array& other);
     Array(Array&& other);
-
     Array& operator=(const Array& other);
     Array& operator=(Array&& other);
 
+    bool operator==(const Array& other) const;
+    Array operator*(const Array& other) const;
+    Array operator*(T v) const;
+    Array operator+(const Array& other) const;
+    Array operator-(const Array& other) const;
+
     inline T at(int i) const { return data_.at(i); };
     inline T& at(int i) { return data_.at(i); };
-    inline int row() const { return row_; };
-    inline int col() const { return col_; };
-    inline int size() const { return row_ * col_; };
+    inline int size() const { return data_.size(); };
+
+    Array& max(T v) const;
+    Array& abs() const;
+    Array& sign();
+    void max_(T v);
+    void abs_();
 private:
     friend struct MatrixX<T>;
 
     std::vector<T> data_;
-    int col_;
-    int row_;
 }; // struct Array
 
 template<typename T>
@@ -55,16 +62,19 @@ protected:
     }; // struct MatrixInitalizer
 
     Array<T> array_;
+    int col_;
+    int row_;
+
     void eye_();
 public:
     static MatrixX<T> eye(int row_col);
-    inline int row() const { return array_.row(); };
-    inline int col() const { return array_.col(); };
+    inline int row() const { return row_; };
+    inline int col() const { return col_; };
     inline int size() const { return array_.size(); };
     inline T& at(int i) { return array_.at(i); };
     inline T at(int i) const { return array_.at(i); };
-    inline T& at(int r, int c) { return at(r * array_.col() + c); };
-    inline T at(int r, int c) const { return at(r * array_.col() + c); };
+    inline T& at(int r, int c) { return at(r * col() + c); };
+    inline T at(int r, int c) const { return at(r * col() + c); };
     inline T scalar() const { assert(is_scalar()); return array_.at(0); }
     inline bool is_scalar() const { return size() == 1; }
     inline const std::vector<T>& data() const { return array_.data_; }
@@ -72,6 +82,10 @@ public:
     inline Array<T>& array() { return array_; }
     inline bool is_pd() const { return is_pd_psd(false); }
     inline bool is_psd() const { return is_pd_psd(true); }
+    inline bool operator==(const MatrixX& other) const { return array_ == other.array_; }
+    inline MatrixX operator*(T v) const { return MatrixX<T>{row(), col(), array_ * v}; }
+    inline MatrixX operator+(const MatrixX& other) const { return MatrixX<T>{row(), col(), array_ + other.array_}; }
+    inline MatrixX operator-(const MatrixX& other) const { return MatrixX<T>{row(), col(), array_ - other.array_}; }
 
     MatrixX(int row, int col);
     MatrixX(const MatrixX& other);
@@ -79,8 +93,8 @@ public:
     MatrixX& operator=(const MatrixX& other);
     MatrixX& operator=(MatrixX&& other);
 
-    MatrixX(const Array<T>& other);
-    MatrixX(Array<T>&& other);
+    MatrixX(int row, int col, const Array<T>& other);
+    MatrixX(int row, int col, Array<T>&& other);
     MatrixX& operator=(const Array<T>& other);
     MatrixX& operator=(Array<T>&& other);
 
@@ -98,11 +112,7 @@ public:
     bool is_sym() const;
 
     MatrixInitalizer operator<<(T v);
-    bool operator==(const MatrixX& m) const;
     MatrixX operator*(const MatrixX& m) const;
-    MatrixX operator*(T v) const;
-    MatrixX operator+(const MatrixX& m) const;
-    MatrixX operator-(const MatrixX& m) const;
 private:
     bool is_pd_psd(bool psd) const;
 }; // struct MatrixX
@@ -175,12 +185,12 @@ Matrix<T, R, C>& Matrix<T, R, C>::operator=(MatrixX<T>&& other)
 
 template<typename T, int R, int C>
 Matrix<T, R, C>::Matrix(const Array<T>& other)
-    : MatrixX<T>(other)
+    : MatrixX<T>(R, C, other)
 {}
 
 template<typename T, int R, int C>
 Matrix<T, R, C>::Matrix(Array<T>&& other)
-    : MatrixX<T>(std::move(other))
+    : MatrixX<T>(R, C, std::move(other))
 {}
 
 template<typename T, int R, int C>
@@ -233,30 +243,22 @@ Matrix<T, R, C> Matrix<T, R, C>::zeros()
 }
 
 template<typename T>
-Array<T>::Array(int row, int col)
-    : row_(row)
-    , col_(col)
+Array<T>::Array(int size)
 {
-    assert(row_ > 0 && col_ > 0);
-    data_.resize(col_ * row_);
+    assert(size > 0);
+    data_.resize(size);
 }
 
 template<typename T>
 Array<T>::Array(const Array& other)
     : data_(other.data_)
-    , row_(other.row_)
-    , col_(other.col_)
 {
 }
 
 template<typename T>
 Array<T>::Array(Array&& other)
     : data_(std::move(other.data_))
-    , row_(other.row_)
-    , col_(other.col_)
 {
-    other.col_ = 0;
-    other.row_ = 0;
 }
 
 template<typename T>
@@ -264,8 +266,6 @@ Array<T>& Array<T>::operator=(const Array& other)
 {
     if (this != &other) {
         data_ = other.data_;
-        row_ = other.row_;
-        col_ = other.col_;
     }
     return *this;
 }
@@ -274,18 +274,111 @@ template<typename T>
 Array<T>& Array<T>::operator=(Array&& other)
 {
     data_ = std::move(other.data_);
-    row_ = other.row_;
-    col_ = other.col_;
-
-    other.row_ = 0;
-    other.col_ = 0;
     return *this;
 }
 
 template<typename T>
-MatrixX<T>::MatrixX(int row, int col)
-    : array_(row, col)
-{}
+bool Array<T>::operator==(const Array<T>& other) const
+{
+    const auto matrix_size{size()};
+    if (matrix_size == other.size()) return false;
+    for (int i = 0; i < matrix_size; ++i) {
+        if (at(i) != other.at(i)) return false;
+    }
+    return true;
+}
+
+template<typename T>
+Array<T> Array<T>::operator*(const Array<T>& other) const
+{
+    assert(other.size() == size());
+    Array<T> out{*this};
+    const auto matrix_size{size()};
+    for (int i = 0; i < matrix_size; ++i) {
+        out.at(i) *= other.at(i);
+    }
+    return out;
+}
+
+template<typename T>
+Array<T> Array<T>::operator*(T v) const
+{
+    Array<T> out{*this};
+    auto matrix_size{size()};
+    for (int i = 0; i < matrix_size; ++i) {
+        out.at(i) *= v;
+    }
+    return out;
+}
+
+template<typename T>
+Array<T> Array<T>::operator+(const Array<T>& other) const
+{
+    assert(other.size() == size());
+    Array<T> out{*this};
+    const auto matrix_size{size()};
+    for (int i = 0; i < matrix_size; ++i) {
+        out.at(i) += other.at(i);
+    }
+    return out;
+}
+
+template<typename T>
+Array<T> Array<T>::operator-(const Array<T>& other) const
+{
+    assert(other.size() == size());
+    Array<T> out{*this};
+    const auto matrix_size{size()};
+    for (int i = 0; i < matrix_size; ++i) {
+        out.at(i) -= other.at(i);
+    }
+    return out;
+}
+
+template<typename T>
+Array<T>& Array<T>::sign()
+{
+    Array<T> out(size());
+    const auto array_size{size()};
+    for (int i = 0; i < array_size; ++i) {
+        out.at(i) = at(i) > 0 ? 1 : -1;
+    }
+    return out;
+}
+
+template<typename T>
+void Array<T>::max_(T v)
+{
+    const auto array_size{size()};
+    for (int i = 0; i < array_size; ++i) {
+        at(i) = std::max(at(i), v);
+    }
+}
+
+template<typename T>
+void Array<T>::abs_()
+{
+    const auto array_size{size()};
+    for (int i = 0; i < array_size; ++i) {
+        at(i) = std::abs(at(i));
+    }
+}
+
+template<typename T>
+Array<T>& Array<T>::max(T v) const
+{
+    Array<T>out(*this);
+    out.max_(v);
+    return out;
+}
+
+template<typename T>
+Array<T>& Array<T>::abs() const
+{
+    Array<T>out(*this);
+    out.abs_();
+    return out;
+}
 
 template<typename T>
 typename MatrixX<T>::MatrixInitalizer MatrixX<T>::operator<<(T v)
@@ -303,14 +396,35 @@ typename MatrixX<T>::MatrixInitalizer& MatrixX<T>::MatrixInitalizer::operator,(T
 }
 
 template<typename T>
+MatrixX<T>::MatrixX(int row, int col)
+    : array_(row * col)
+    , row_(row)
+    , col_(col)
+{}
+
+template<typename T>
 MatrixX<T>::MatrixX(const MatrixX& other)
-    : MatrixX(other.array_)
+    : MatrixX(other.row_, other.col_, other.array_)
 {
 }
 
 template<typename T>
+MatrixX<T>::MatrixX(int row, int col, const Array<T>& other)
+    : array_(other)
+    , row_(row)
+    , col_(col)
+{}
+
+template<typename T>
+MatrixX<T>::MatrixX(int row, int col, Array<T>&& other)
+    : array_(std::move(other))
+    , row_(row)
+    , col_(col)
+{}
+
+template<typename T>
 MatrixX<T>::MatrixX(MatrixX&& other)
-    : MatrixX(std::move(other.array_))
+    : MatrixX(other.row_, other.col_, std::move(other.array_))
 {
 }
 
@@ -329,16 +443,6 @@ MatrixX<T>& MatrixX<T>::operator=(MatrixX&& other)
     array_ = std::move(other.array_);
     return *this;
 }
-
-template<typename T>
-MatrixX<T>::MatrixX(const Array<T>& other)
-    : array_(other)
-{}
-
-template<typename T>
-MatrixX<T>::MatrixX(Array<T>&& other)
-    : array_(std::move(other))
-{}
 
 template<typename T>
 MatrixX<T>& MatrixX<T>::operator=(const Array<T>& other)
@@ -570,59 +674,12 @@ MatrixX<T> MatrixX<T>::operator*(const MatrixX& m) const
 }
 
 template<typename T>
-bool MatrixX<T>::operator==(const MatrixX& m) const
-{
-    if (col() != m.col_ || row() != m.row()) return false;
-    const auto matrix_size{size()};
-    for (int i = 0; i < matrix_size; ++i) {
-        if (at(i) != m.at(i)) return false;
-    }
-    return true;
-}
-
-template<typename T>
-MatrixX<T> MatrixX<T>::operator*(T v) const
-{
-    MatrixX<T> out{*this};
-    auto matrix_size{size()};
-    for (int i = 0; i < matrix_size; ++i) {
-        out.array_.at(i) *= v;
-    }
-    return out;
-}
-
-template<typename T>
 MatrixX<T> operator*(T v, const MatrixX<T>& m)
 {
     MatrixX<T> out{m};
     auto matrix_size{m.size()};
     for (int i = 0; i < matrix_size; ++i) {
         out.at(i) *= v;
-    }
-    return out;
-}
-
-template<typename T>
-MatrixX<T> MatrixX<T>::operator+(const MatrixX& m) const
-{
-    assert(m.row() == row() && m.col() == col());
-    MatrixX<T> out{*this};
-    const auto matrix_size{size()};
-    for (int i = 0; i < matrix_size; ++i) {
-        out.array_.at(i) += m.array_.at(i);
-    }
-    return out;
-}
-
-template<typename T>
-MatrixX<T> MatrixX<T>::operator-(const MatrixX& m) const
-{
-    assert(m.row() == row() && m.col() == col());
-
-    MatrixX<T> out{*this};
-    const auto matrix_size{size()};
-    for (int i = 0; i < matrix_size; ++i) {
-        out.array_.at(i) -= m.array_.at(i);
     }
     return out;
 }
