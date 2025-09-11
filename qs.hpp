@@ -33,6 +33,8 @@ struct Array
     Array operator*(T v) const;
     Array operator+(const Array& other) const;
     Array operator-(const Array& other) const;
+    Array operator+(T v) const;
+    Array operator-(T v) const;
 
     inline T at(int i) const { return data_.at(i); };
     inline T& at(int i) { return data_.at(i); };
@@ -331,6 +333,28 @@ Array<T> Array<T>::operator-(const Array<T>& other) const
     const auto matrix_size{size()};
     for (int i = 0; i < matrix_size; ++i) {
         out.at(i) -= other.at(i);
+    }
+    return out;
+}
+
+template<typename T>
+Array<T> Array<T>::operator+(T v) const
+{
+    Array<T> out{*this};
+    const auto matrix_size{size()};
+    for (int i = 0; i < matrix_size; ++i) {
+        out.at(i) += v;
+    }
+    return out;
+}
+
+template<typename T>
+Array<T> Array<T>::operator-(T v) const
+{
+    Array<T> out{*this};
+    const auto matrix_size{size()};
+    for (int i = 0; i < matrix_size; ++i) {
+        out.at(i) -= v;
     }
     return out;
 }

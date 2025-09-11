@@ -7,7 +7,8 @@ using namespace std::chrono_literals;
 template<typename T>
 T soft_thresholding(T x, float lambda, float tau)
 {
-    return x;
+    T out(x.row(), x.col(), x.array().sign() * (x.array().abs() - (lambda * tau)).max(0));
+    return out;
 }
 
 int main()
@@ -27,7 +28,7 @@ int main()
     std::cout << "init x: " << x << "\n";
 
     auto lambda{0.5f};
-    auto tau_inv{1.0f};
+    auto tau_inv{0.001f};
     auto AtA_tauI{A.t() * A + tau_inv * qs::Matrixf<3, 3>::eye()};
     auto AtA_tauI_inv{AtA_tauI.inv()};
     auto Atb{A.t() * b};
@@ -42,7 +43,7 @@ int main()
 
         auto fx{(A * x - b).norm2() + lambda * x.norm1()};
         std::cout << "fx: " << fx << "\n";
-        // std::cout << "x: " << x << "\n";
+        std::cout << "x: " << x << "\n";
         std::this_thread::sleep_for(100ms);
     }
 
